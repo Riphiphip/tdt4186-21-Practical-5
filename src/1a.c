@@ -47,9 +47,7 @@ int main()
 
         // Continually write data to the pipe
         int write_fd = pipe_fds[PIPE_WRITE];
-        while (1)
-            write(write_fd, data, BLOCK_SIZE);
-
+        while (write(write_fd, data, BLOCK_SIZE) > 0) { }
         exit(EXIT_SUCCESS);
     }
     else
@@ -63,8 +61,11 @@ int main()
         // How many bytes have been read so far
         int cum_bytes = 0;
         int read_fd = pipe_fds[PIPE_READ];
-        while (1)
+        do
+        {
             cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
+            printf("Cumulative bytes read: %d\n", cum_bytes);
+        } while (cum_bytes > 0);
     }
 
     return 0;
