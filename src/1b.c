@@ -68,6 +68,9 @@ int main()
 
         // How many bytes have been read so far
         int cum_bytes = 0;
+
+        int prev_bytes = 0;
+
         int read_fd = pipe_fds[PIPE_READ];
         while (1)
         {
@@ -75,6 +78,8 @@ int main()
             if (is_alarmed)
             {
                 printf("Cumulative bytes: %d\n", cum_bytes);
+                printf("Bandwidth: %d\n\n", cum_bytes-prev_bytes);
+                prev_bytes = cum_bytes;
                 is_alarmed = 0;
             }
         }
