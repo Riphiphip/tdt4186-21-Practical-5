@@ -6,9 +6,11 @@ incdir = ./include
 CC = gcc
 cflags = -I$(incdir) -g
 
-targets = 1a
+targets = 1a 1b
 
-all:$(outdir)/$(targets)
+_targets = $(patsubst %, $(outdir)/%, $(targets))
+
+all:$(outdir)/$(_targets)
 
 $(outdir)/%: $(srcdir)/%.c $(outdir) 
 	$(CC) $< -o $@ $(cflags)
