@@ -4,7 +4,7 @@ outdir = ./build
 incdir = ./include
 
 CC = gcc
-cflags = -I$(incdir)
+cflags = -I$(incdir) -g
 
 targets = 1a
 
