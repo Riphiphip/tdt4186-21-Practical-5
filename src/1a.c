@@ -37,7 +37,7 @@ int main()
 
     if (child_pid == FORK_IN_CHILD)
     {
-        // Close the FD's read end, we don't use it
+        // Close the pipe's read end, we don't use it
         close(pipe_fds[PIPE_READ]);
 
         // Find some random data to write through the pipe
@@ -52,7 +52,7 @@ int main()
     }
     else
     {
-        // Close the FD's write end, we don't use it
+        // Close the pipe's write end, we don't use it
         close(pipe_fds[PIPE_WRITE]);
 
         // Continually read and measure performance in the parent process
