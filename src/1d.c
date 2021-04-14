@@ -1,8 +1,5 @@
 
 #include "1.h"
-#include <sys/types.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #define FORK_IN_CHILD 0
 #define FORK_FAILURE -1
@@ -20,11 +17,11 @@
 int main()
 {
     // Create the pipe
-    int pipe_fds[2];
-    if (pipe(pipe_fds) == PIPE_FAIL)
-    {
-        perror("Failed to create pipe");
-        return 1;
+    unlink(FIFO_PATH);
+    int result = mkfifo(FIFO_PATH, 0666);
+    if (result){
+        perror("Error while creating named pipe");
+        return -1;
     }
 
     // Fork off a new child
@@ -37,30 +34,25 @@ int main()
 
     if (child_pid == FORK_IN_CHILD)
     {
-        // Close the pipe's read end, we don't use it
-        close(pipe_fds[PIPE_READ]);
-
         // Find some random data to write through the pipe
         // We malloc BLOCK_SIZE bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
         char *data = (char *)malloc(sizeof(char) * BLOCK_SIZE);
         free(data);
-
+        int write_fd = open(FIFO_PATH, O_WRONLY);
         // Continually write data to the pipe
-        int write_fd = pipe_fds[PIPE_WRITE];
-        while (write(write_fd, data, BLOCK_SIZE) > 0) { }
+        while (write(write_fd, data, BLOCK_SIZE) > 0)
+        {
+        }
         exit(EXIT_SUCCESS);
     }
     else
     {
-        // Close the pipe's write end, we don't use it
-        close(pipe_fds[PIPE_WRITE]);
-
         // Continually read and measure performance in the parent process
         char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
 
         // How many bytes have been read so far
         int cum_bytes = 0;
-        int read_fd = pipe_fds[PIPE_READ];
+        int read_fd = open(FIFO_PATH, O_RDONLY);
         do
         {
             cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
