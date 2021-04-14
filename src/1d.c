@@ -16,8 +16,16 @@
 
 short is_alarmed = 0;
 
-int main()
+int main(int argc, char *argv[])
 {
+    size_t block_size = 1;
+    if (argc > 1)
+    {
+        char *trash;
+        block_size = strtoul(argv[1], &trash, 0);
+    }
+    printf("Measuring bandwidth with block size %lu bytes\n", block_size);
+
     // Create the pipe
     unlink(FIFO_PATH);
     int result = mkfifo(FIFO_PATH, 0666);
@@ -37,12 +45,12 @@ int main()
     if (child_pid == FORK_IN_CHILD)
     {
         // Find some random data to write through the pipe
-        // We malloc BLOCK_SIZE bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
-        char *data = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        // We malloc block_size bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
+        char *data = (char *)malloc(sizeof(char) * block_size);
         free(data);
         int write_fd = open(FIFO_PATH, O_WRONLY);
         // Continually write data to the pipe
-        while (write(write_fd, data, BLOCK_SIZE) > 0)
+        while (write(write_fd, data, block_size) > 0)
         {
         }
         exit(EXIT_SUCCESS);
@@ -53,7 +61,7 @@ int main()
         alarm(1);
         
         // Continually read and measure performance in the parent process
-        char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        char *buffer = (char *)malloc(sizeof(char) * block_size);
 
         // How many bytes have been read so far
         int cum_bytes = 0;
@@ -61,7 +69,7 @@ int main()
         int read_fd = open(FIFO_PATH, O_RDONLY);
         do
         {
-            cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
+            cum_bytes += read(read_fd, buffer, block_size);
             if (is_alarmed)
             {
                 printf("Cumulative bytes: %d\n", cum_bytes);

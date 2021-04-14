@@ -19,8 +19,16 @@
 
 short should_print = 0;
 
-int main()
+int main(int argc, char *argv[])
 {
+    size_t block_size = 1;
+    if (argc > 1)
+    {
+        char *trash;
+        block_size = strtoul(argv[1], &trash, 0);
+    }
+    printf("Measuring bandwidth with block size %lu bytes\n", block_size);
+
     // Create the pipe
     int pipe_fds[2];
     if (pipe(pipe_fds) == PIPE_FAIL)
@@ -43,14 +51,14 @@ int main()
         close(pipe_fds[PIPE_READ]);
 
         // Find some random data to write through the pipe
-        // We malloc BLOCK_SIZE bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
-        char *data = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        // We malloc block_size bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
+        char *data = (char *)malloc(sizeof(char) * block_size);
         free(data);
 
         // Continually write data to the pipe
         int write_fd = pipe_fds[PIPE_WRITE];
         while (1)
-            write(write_fd, data, BLOCK_SIZE);
+            write(write_fd, data, block_size);
 
         exit(EXIT_SUCCESS);
     }
@@ -60,7 +68,7 @@ int main()
         close(pipe_fds[PIPE_WRITE]);
 
         // Continually read and measure performance in the parent process
-        char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        char *buffer = (char *)malloc(sizeof(char) * block_size);
 
         // Set up alarm handler
         signal(SIGUSR1, usr1_handler);
@@ -73,7 +81,7 @@ int main()
         int read_fd = pipe_fds[PIPE_READ];
         while (1)
         {
-            cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
+            cum_bytes += read(read_fd, buffer, block_size);
             if (should_print)
             {
                 printf("Cumulative bytes: %d\n", cum_bytes);
