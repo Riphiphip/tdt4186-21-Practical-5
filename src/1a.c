@@ -62,12 +62,12 @@ int main(int argc, char *argv[])
         char *buffer = (char *)malloc(sizeof(char) * block_size);
 
         // How many bytes have been read so far
-        int cum_bytes = 0;
+        size_t cum_bytes = 0;
         int read_fd = pipe_fds[PIPE_READ];
         do
         {
             cum_bytes += read(read_fd, buffer, block_size);
-            printf("Cumulative bytes read: %d\n", cum_bytes);
+            printf("Cumulative bytes read: %lu\n", cum_bytes);
         } while (cum_bytes > 0);
     }
 
