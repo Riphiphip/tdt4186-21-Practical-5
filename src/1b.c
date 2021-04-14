@@ -13,9 +13,9 @@
 #define PIPE_WRITE 1
 
 // How many bytes have been read so far
-unsigned int cum_bytes = 0;
+size_t cum_bytes = 0;
 // How many cumulative bytes were read last time
-unsigned int prev_bytes = 0;
+size_t prev_bytes = 0;
 
 /* 
  * The largest block size that worked on my system was 133 456 bytes.

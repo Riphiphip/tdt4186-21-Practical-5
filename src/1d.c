@@ -1,5 +1,9 @@
 
 #include "1.h"
+#include <sys/types.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <math.h>
 
 #define FORK_IN_CHILD 0
 #define FORK_FAILURE -1
@@ -9,12 +13,10 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-// allow specifying the block size on compile
-#ifndef BLOCK_SIZE
-#define BLOCK_SIZE 100
-#endif
-
-short is_alarmed = 0;
+// How many bytes have been read so far
+size_t cum_bytes = 0;
+// How many cumulative bytes were read last time
+size_t prev_bytes = 0;
 
 int main(int argc, char *argv[])
 {
@@ -50,9 +52,8 @@ int main(int argc, char *argv[])
         free(data);
         int write_fd = open(FIFO_PATH, O_WRONLY);
         // Continually write data to the pipe
-        while (write(write_fd, data, block_size) > 0)
-        {
-        }
+        while (write(write_fd, data, block_size) == block_size) { }
+        close(write_fd);
         exit(EXIT_SUCCESS);
     }
     else
@@ -60,24 +61,18 @@ int main(int argc, char *argv[])
         signal(SIGALRM, alarm_handler);
         alarm(1);
         
-        // Continually read and measure performance in the parent process
-        char *buffer = (char *)malloc(sizeof(char) * block_size);
+        // Initialize the read buffer
+        char *read_buffer = (char *)malloc(sizeof(char) * block_size);
 
-        // How many bytes have been read so far
-        int cum_bytes = 0;
-        int prev_bytes = 0;
         int read_fd = open(FIFO_PATH, O_RDONLY);
+        size_t bytes_read = 0;
         do
         {
-            cum_bytes += read(read_fd, buffer, block_size);
-            if (is_alarmed)
-            {
-                printf("Cumulative bytes: %d\n", cum_bytes);
-                printf("Bandwidth: %d\n\n", cum_bytes-prev_bytes);
-                prev_bytes = cum_bytes;
-                is_alarmed = 0;
-            }
-        } while (cum_bytes > 0);
+            // not as fast as possible, but necessary to detect when to stop reading
+            bytes_read = read(read_fd, read_buffer, block_size);
+            cum_bytes += bytes_read;
+        } while (bytes_read > 0);
+        close(read_fd);
     }
 
     return 0;
@@ -86,5 +81,8 @@ int main(int argc, char *argv[])
 void alarm_handler(int signum)
 {
     alarm(1);
-    is_alarmed = 1;
+
+    printf("Cumulative bytes:\t%.*f MB\n", 2, cum_bytes / pow(10, 6));
+    printf("Bandwidth:\t\t%.*f MB/s\n\n", 2, (cum_bytes - prev_bytes) / pow(10, 6));
+    prev_bytes = cum_bytes;
 }

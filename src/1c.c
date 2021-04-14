@@ -12,12 +12,8 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-// allow specifying the block size on compile
-#ifndef BLOCK_SIZE
-#define BLOCK_SIZE 100
-#endif
-
-short should_print = 0;
+// How many bytes have been read so far
+size_t cum_bytes = 0;
 
 int main(int argc, char *argv[])
 {
@@ -73,27 +69,14 @@ int main(int argc, char *argv[])
         // Set up alarm handler
         signal(SIGUSR1, usr1_handler);
 
-        // How many bytes have been read so far
-        int cum_bytes = 0;
-
-        int prev_bytes = 0;
-
         int read_fd = pipe_fds[PIPE_READ];
         while (1)
-        {
             cum_bytes += read(read_fd, buffer, block_size);
-            if (should_print)
-            {
-                printf("Cumulative bytes: %d\n", cum_bytes);
-                prev_bytes = cum_bytes;
-                should_print = 0;
-            }
-        }
     }
     return 0;
 }
 
 void usr1_handler(int signum)
 {
-    should_print = 1;
+    printf("Cumulative bytes: %lu\n", cum_bytes);
 }
