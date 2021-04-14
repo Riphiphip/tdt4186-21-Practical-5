@@ -1,4 +1,3 @@
-
 #include "1.h"
 #include <sys/types.h>
 #include <stdlib.h>
@@ -18,17 +17,27 @@ unsigned int cum_bytes = 0;
 // How many cumulative bytes were read last time
 unsigned int prev_bytes = 0;
 
-// Increases by a multiple of 10 every increase_step alarms
-unsigned int block_size = 1;
-unsigned int max_block_size = 10000000;
-#define MAX_STEP 5
-int increase_step = MAX_STEP;
+/* 
+ * The largest block size that worked on my system was 133 456 bytes.
+ * 
+ * Among the powers of 10, bandwidth was the greatest when transferring 100 000 bytes.
+ * This gave a bandwidth of ~1400MB/s, or 1.4GB/s
+ * 
+ * Running 2 programs transferring blocks of 10 bytes and 2 programs transferring blocks of 100 000 bytes simulatenously.
+ * The bandwidth surprisingly went up for the processes transferring 100 000 bytes, peaking at ~2.6GB/s
+ * The bandwidth on the programs transfering 10 bytes, however, went down from ~12MB/s to ~8MB/s
+ */
 
-// Continually read and measure performance in the parent process
-char *read_buffer = NULL;
-
-int main()
+int main(int argc, char *argv[])
 {
+    size_t block_size = 1;
+    if (argc > 1)
+    {
+        char *trash;
+        block_size = strtoul(argv[1], &trash, 0);
+    }
+    printf("Measuring bandwidth with block size %lu bytes\n", block_size);
+
     // Create the pipe
     int pipe_fds[2];
     if (pipe(pipe_fds) == PIPE_FAIL)
@@ -54,14 +63,10 @@ int main()
         char *data = (char *)malloc(sizeof(char));
         free(data);
 
-        // Set up alarm handler
-        signal(SIGALRM, alarm_handler_child);
-        alarm(1);
-
         // Continually write data to the pipe
         int write_fd = pipe_fds[PIPE_WRITE];
-        while (1)
-            write(write_fd, data, block_size);
+        while (write(write_fd, data, block_size) == block_size) {}
+        close(write_fd);
         exit(EXIT_SUCCESS);
     }
     else
@@ -70,43 +75,26 @@ int main()
         close(pipe_fds[PIPE_WRITE]);
 
         // Initialize the read buffer
-        read_buffer = (char *)malloc(sizeof(char) * block_size);
+        char *read_buffer = (char *)malloc(sizeof(char) * block_size);
 
         // Set up alarm handler
-        signal(SIGALRM, alarm_handler_parent);
+        signal(SIGALRM, alarm_handler);
         alarm(1);
 
         int read_fd = pipe_fds[PIPE_READ];
-        while (1)
-            cum_bytes += read(read_fd, read_buffer, block_size);
+        size_t bytes_read = 0;
+        do
+        {
+            bytes_read = read(read_fd, read_buffer, block_size);
+            cum_bytes += bytes_read;
+        } while (bytes_read > 0);
+        close(read_fd);
     }
     return 0;
 }
 
-void alarm_handler_child(int signum)
+void alarm_handler(int signum)
 {
-    if (--increase_step == 0)
-    {
-        increase_step = MAX_STEP;
-        block_size *= 10;
-    }
-    alarm(1);
-}
-
-void alarm_handler_parent(int signum)
-{
-    // Increase the block size by a factor of 10 every MAX_STEP alarms
-    if (--increase_step == 0)
-    {
-        increase_step = MAX_STEP;
-        block_size *= 10;
-        cum_bytes = 0;
-        prev_bytes = 0;
-        read_buffer = realloc(read_buffer, sizeof(char) * block_size);
-
-        printf("Block size increased to %u\n================\n", block_size);
-    }
-
     alarm(1);
 
     printf("Cumulative bytes:\t%.*f MB\n", 2, cum_bytes / pow(10, 6));
