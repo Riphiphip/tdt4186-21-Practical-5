@@ -6,7 +6,7 @@ incdir = ./include
 CC = gcc
 cflags = -I$(incdir) -g
 
-targets = 1a 1b
+targets = 1a 1b 1c
 
 _targets = $(patsubst %, $(outdir)/%, $(targets))
 
