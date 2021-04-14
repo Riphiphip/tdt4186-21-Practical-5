@@ -14,6 +14,8 @@
 #define BLOCK_SIZE 100
 #endif
 
+short is_alarmed = 0;
+
 int main()
 {
     // Create the pipe
@@ -47,18 +49,34 @@ int main()
     }
     else
     {
+        signal(SIGALRM, alarm_handler);
+        alarm(1);
+        
         // Continually read and measure performance in the parent process
         char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
 
         // How many bytes have been read so far
         int cum_bytes = 0;
+        int prev_bytes = 0;
         int read_fd = open(FIFO_PATH, O_RDONLY);
         do
         {
             cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
-            printf("Cumulative bytes read: %d\n", cum_bytes);
+            if (is_alarmed)
+            {
+                printf("Cumulative bytes: %d\n", cum_bytes);
+                printf("Bandwidth: %d\n\n", cum_bytes-prev_bytes);
+                prev_bytes = cum_bytes;
+                is_alarmed = 0;
+            }
         } while (cum_bytes > 0);
     }
 
     return 0;
+}
+
+void alarm_handler(int signum)
+{
+    alarm(1);
+    is_alarmed = 1;
 }
