@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 
 #define FORK_IN_CHILD 0
 #define FORK_FAILURE -1
@@ -12,12 +13,19 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-// allow specifying the block size on compile
-#ifndef BLOCK_SIZE
-#define BLOCK_SIZE 100
-#endif
+// How many bytes have been read so far
+unsigned int cum_bytes = 0;
+// How many cumulative bytes were read last time
+unsigned int prev_bytes = 0;
 
-short is_alarmed = 0;
+// Increases by a multiple of 10 every increase_step alarms
+unsigned int block_size = 1;
+unsigned int max_block_size = 10000000;
+#define MAX_STEP 5
+int increase_step = MAX_STEP;
+
+// Continually read and measure performance in the parent process
+char *read_buffer = NULL;
 
 int main()
 {
@@ -42,16 +50,18 @@ int main()
         // Close the FD's read end, we don't use it
         close(pipe_fds[PIPE_READ]);
 
-        // Find some random data to write through the pipe
-        // We malloc BLOCK_SIZE bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
-        char *data = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        // Find some random data on the heap to write through the pipe
+        char *data = (char *)malloc(sizeof(char));
         free(data);
+
+        // Set up alarm handler
+        signal(SIGALRM, alarm_handler_child);
+        alarm(1);
 
         // Continually write data to the pipe
         int write_fd = pipe_fds[PIPE_WRITE];
         while (1)
-            write(write_fd, data, BLOCK_SIZE);
-
+            write(write_fd, data, block_size);
         exit(EXIT_SUCCESS);
     }
     else
@@ -59,36 +69,47 @@ int main()
         // Close the FD's write end, we don't use it
         close(pipe_fds[PIPE_WRITE]);
 
-        // Continually read and measure performance in the parent process
-        char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        // Initialize the read buffer
+        read_buffer = (char *)malloc(sizeof(char) * block_size);
 
         // Set up alarm handler
-        signal(SIGALRM, alarm_handler);
+        signal(SIGALRM, alarm_handler_parent);
         alarm(1);
-
-        // How many bytes have been read so far
-        int cum_bytes = 0;
-
-        int prev_bytes = 0;
 
         int read_fd = pipe_fds[PIPE_READ];
         while (1)
-        {
-            cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
-            if (is_alarmed)
-            {
-                printf("Cumulative bytes: %d\n", cum_bytes);
-                printf("Bandwidth: %d\n\n", cum_bytes-prev_bytes);
-                prev_bytes = cum_bytes;
-                is_alarmed = 0;
-            }
-        }
+            cum_bytes += read(read_fd, read_buffer, block_size);
     }
     return 0;
 }
 
-void alarm_handler(int signum)
+void alarm_handler_child(int signum)
 {
+    if (--increase_step == 0)
+    {
+        increase_step = MAX_STEP;
+        block_size *= 10;
+    }
     alarm(1);
-    is_alarmed = 1;
+}
+
+void alarm_handler_parent(int signum)
+{
+    // Increase the block size by a factor of 10 every MAX_STEP alarms
+    if (--increase_step == 0)
+    {
+        increase_step = MAX_STEP;
+        block_size *= 10;
+        cum_bytes = 0;
+        prev_bytes = 0;
+        read_buffer = realloc(read_buffer, sizeof(char) * block_size);
+
+        printf("Block size increased to %u\n================\n", block_size);
+    }
+
+    alarm(1);
+
+    printf("Cumulative bytes:\t%.*f MB\n", 2, cum_bytes / pow(10, 6));
+    printf("Bandwidth:\t\t%.*f MB/s\n\n", 2, (cum_bytes - prev_bytes) / pow(10, 6));
+    prev_bytes = cum_bytes;
 }
