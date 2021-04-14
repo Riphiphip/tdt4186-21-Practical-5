@@ -17,7 +17,7 @@
 #define BLOCK_SIZE 100
 #endif
 
-short is_alarmed = 0;
+short should_print = 0;
 
 int main()
 {
@@ -63,8 +63,7 @@ int main()
         char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
 
         // Set up alarm handler
-        signal(SIGALRM, alarm_handler);
-        alarm(1);
+        signal(SIGUSR1, usr1_handler);
 
         // How many bytes have been read so far
         int cum_bytes = 0;
@@ -75,20 +74,18 @@ int main()
         while (1)
         {
             cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
-            if (is_alarmed)
+            if (should_print)
             {
                 printf("Cumulative bytes: %d\n", cum_bytes);
-                printf("Bandwidth: %d\n\n", cum_bytes-prev_bytes);
                 prev_bytes = cum_bytes;
-                is_alarmed = 0;
+                should_print = 0;
             }
         }
     }
     return 0;
 }
 
-void alarm_handler(int signum)
+void usr1_handler(int signum)
 {
-    alarm(1);
-    is_alarmed = 1;
+    should_print = 1;
 }
