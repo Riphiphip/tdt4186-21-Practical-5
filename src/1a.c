@@ -12,13 +12,16 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-// allow specifying the block size on compile
-#ifndef BLOCK_SIZE
-#define BLOCK_SIZE 100
-#endif
-
-int main()
+int main(int argc, char *argv[])
 {
+    size_t block_size = 1;
+    if (argc > 1)
+    {
+        char *trash;
+        block_size = strtoul(argv[1], &trash, 0);
+    }
+    printf("Measuring bandwidth with block size %lu bytes\n", block_size);
+
     // Create the pipe
     int pipe_fds[2];
     if (pipe(pipe_fds) == PIPE_FAIL)
@@ -41,13 +44,13 @@ int main()
         close(pipe_fds[PIPE_READ]);
 
         // Find some random data to write through the pipe
-        // We malloc BLOCK_SIZE bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
-        char *data = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        // We malloc block_size bytes, then immediately free them. This gets us a pointer to some data but prevents memory leakage
+        char *data = (char *)malloc(sizeof(char) * block_size);
         free(data);
 
         // Continually write data to the pipe
         int write_fd = pipe_fds[PIPE_WRITE];
-        while (write(write_fd, data, BLOCK_SIZE) > 0) { }
+        while (write(write_fd, data, block_size) > 0) { }
         exit(EXIT_SUCCESS);
     }
     else
@@ -56,14 +59,14 @@ int main()
         close(pipe_fds[PIPE_WRITE]);
 
         // Continually read and measure performance in the parent process
-        char *buffer = (char *)malloc(sizeof(char) * BLOCK_SIZE);
+        char *buffer = (char *)malloc(sizeof(char) * block_size);
 
         // How many bytes have been read so far
         int cum_bytes = 0;
         int read_fd = pipe_fds[PIPE_READ];
         do
         {
-            cum_bytes += read(read_fd, buffer, BLOCK_SIZE);
+            cum_bytes += read(read_fd, buffer, block_size);
             printf("Cumulative bytes read: %d\n", cum_bytes);
         } while (cum_bytes > 0);
     }
