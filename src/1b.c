@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
         size_t bytes_read = 0;
         do
         {
+            // not as fast as possible, but necessary to detect when to stop reading
             bytes_read = read(read_fd, read_buffer, block_size);
             cum_bytes += bytes_read;
         } while (bytes_read > 0);
