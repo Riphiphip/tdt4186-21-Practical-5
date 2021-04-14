@@ -20,12 +20,11 @@ size_t prev_bytes = 0;
 /* 
  * The largest block size that worked on my system was 133 456 bytes.
  * 
- * Among the powers of 10, bandwidth was the greatest when transferring 100 000 bytes.
- * This gave a bandwidth of ~1400MB/s, or 1.4GB/s
+ * Among the powers of 10, bandwidth was the greatest when transferring 10 000 bytes.
+ * This gave a bandwidth of ~5200MB/s, or 5.2GB/s
  * 
- * Running 2 programs transferring blocks of 10 bytes and 2 programs transferring blocks of 100 000 bytes simulatenously.
- * The bandwidth surprisingly went up for the processes transferring 100 000 bytes, peaking at ~2.6GB/s
- * The bandwidth on the programs transfering 10 bytes, however, went down from ~12MB/s to ~8MB/s
+ * Running 3 programs transferring blocks of 10 000 bytes, the bandwidth goes down to ~2.5GB/s.
+ * Starting a 4th program transferring only 10 bytes, the bandwidth goes even further down to ~1.2GB/s for the 10kB programs.
  */
 
 int main(int argc, char *argv[])

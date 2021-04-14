@@ -18,6 +18,16 @@ size_t cum_bytes = 0;
 // How many cumulative bytes were read last time
 size_t prev_bytes = 0;
 
+/* 
+ * The largest block size that worked on my system was 133 432 bytes.
+ * 
+ * Among the powers of 10, bandwidth was the greatest when transferring 10 000 bytes.
+ * This gave a somewhat fluctuating bandwidth between ~4800MB/s and ~5200MB/s, or ~4.8 - 5.2GB/s
+ * 
+ * Running multiple programs at the same time gave the same results as in task b.
+ * That is, bandwidth is reduced when multiple programs run at the same time.
+ */
+
 int main(int argc, char *argv[])
 {
     size_t block_size = 1;
